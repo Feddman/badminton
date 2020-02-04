@@ -6,13 +6,10 @@
             <h4 class="title">Aangemelde spelers</h4>
             <input type="text" id="barcode" v-model="barcode" @keyup.enter="newParticipant">
             <div class="participants">
-                
-                     <draggable v-model="participants">
-                        <p style="overflow: hidden" class="list-item list-item-players" v-if="participant.participating && !participant.oncourt" v-bind:key="participant.speelNummer" v-for="participant in this.participants">{{participant.name}} 
-                        </p>
-                    </draggable> 
-
-                      
+                <draggable v-model="participants" group="people">
+                    <p style="overflow: hidden" class="list-item list-item-players" v-if="participant.participating && !participant.oncourt" v-bind:key="participant.speelNummer" v-for="participant in this.participants">{{participant.name}} 
+                    </p>
+                </draggable> 
             </div>  
         </div>
 
@@ -78,16 +75,40 @@
             <button @click="showAddParticipant = false" class="modal-close is-large" aria-label="close"></button>
         </div>
 
+         <div class="modal" v-bind:class="{'is-active': showParticipantList}">
+            <div class="modal-background"></div>
+            <div class="modal-card">
+                <div class="modal-card-head">
+                    <h3>Spelerslijst</h3>
+                </div>
+                <section class="modal-card-body">
+                    <div class="list">
+                        
+                            <div style="overflow:hidden" class="list-item" v-bind:key="participant.speelNummer" v-for="participant in participants">
+                                <b>{{participant.name}}</b>({{participant.speelNummer}})
+                            <span @click="deleteParticipant(participant)" style="float: right" class="button is-danger">verwijder</span>    
+
+                            </div>
+                            
+                                
+                       
+                    </div>
+                </section>
+                
+            </div>
+            <button @click="showParticipantList = false" class="modal-close is-large" aria-label="close"></button>
+        </div>
+
     </div>    
 </div>
 </template>
 
 <script>
   import draggable from 'vuedraggable'
+  import {Menu} from 'vue-electron'
 const path = require('path')
 // This will save the database in the same directory as the application.
 const location = path.join(__dirname, '')
-
 export default {
     
     name : 'main-page',
@@ -97,26 +118,41 @@ export default {
     },
 
     mounted() {
-        
+        console.log(this.$electron.remote.Menu);
+        let that = this;
+        var menu = this.$electron.remote.Menu.buildFromTemplate([
+            {
+                label: 'Menu',
+                submenu: [
+                    {
+                        label:'Spelersbeheer',
+                        click() {
+                            that.showParticipantList = true;
+                        }
+                    },
+                ]
+            }
+        ])
+        this.$electron.remote.Menu.setApplicationMenu(menu); 
+
         setInterval(() => {
-            if (!this.showAddParticipant) {
+            if (!this.showAddParticipant && !this.showParticipantList) {
                 document.getElementById('barcode').focus()
             }
         }, 2000);
 
         setInterval( () => {
             if(!this.paused) {
+
                 this.assignParticipants();
             }
         }, 4000 )
+        
+        if (!localStorage.getItem('participants')) {
+            localStorage.setItem('participants', "[]");
+        } 
 
-        db.getAll('participants', location, (err, data) =>{
-            this.participants = data;
-        }); 
-
-        db.getAll('courts', location, (err, data) => {
-            this.courts = data;
-        });
+        this.participants = JSON.parse(localStorage.getItem('participants'));
     },
 
     data() {
@@ -129,6 +165,7 @@ export default {
             courts: [],
             barcode: null,
             showAddParticipant: false,
+            showParticipantList: false,
             newPlayer: {
                 name: "",
                 participating: true,
@@ -140,8 +177,6 @@ export default {
     },
 
     methods: {
-
-
         addCourt() {
             let court = {
                 baan: this.courts.length + 1,
@@ -149,19 +184,13 @@ export default {
                 players: []
             }   
 
-            this.courts.push(court);    
-          
+            this.courts.push(court);            
         },
 
         clearCourt() {
-            db.clearTable('courts', location, (succ, data)=>{
-                db.getAll('courts', location, (err, data) => {
-                    this.courts = data;
-                });
-
-                this.participants.forEach((participant) => {
-                    participant.oncourt = false;
-                });
+            this.courts = [];
+            this.participants.forEach((participant) => {
+                participant.oncourt = false;
             });
         },
 
@@ -224,8 +253,17 @@ export default {
                 else {
                     this.changeParticipantStatus(participant);
                 }
-            }    
-                  
+            }       
+        },
+
+        deleteParticipant(participant) {
+            let confirm = window.confirm("Weet je zeker dat je deze speler wilt verwijderen?");
+            if (confirm) {
+                let participants = this.participants;
+                participants = participants.filter( el => el.speelNummer !== participant.speelNummer );
+                this.participants = participants;
+                localStorage.setItem('participants', JSON.stringify(this.participants));
+            }
         },
 
         changeParticipantStatus(participant) {
@@ -237,11 +275,13 @@ export default {
         },
 
         addParticipant() {
+            if (!this.newPlayer.name.length) {
+                return false;
+            }
             this.newPlayer.speelNummer = this.barcode;
-            db.insertTableContent('participants', location, this.newPlayer, (suc, err) => {
-                console.log(suc);
-            })
+        
             this.participants.push(this.newPlayer);
+            localStorage.setItem('participants', JSON.stringify(this.participants));
             this.showAddParticipant = false; 
 
             this.barcode = null;
@@ -252,12 +292,7 @@ export default {
                 paused: false
             };
         },
-
-  
-
-
     }
-
 }
 </script>
 <style>
@@ -291,7 +326,7 @@ background: linear-gradient(to top, #FFFFFF, #ECE9E6); /* W3C, IE 10+/ Edge, Fir
     }
 
     #barcode {
-        opacity: 0;
+        /* opacity: 0; */
     }
 
     .grid {
