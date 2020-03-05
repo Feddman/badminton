@@ -14,16 +14,18 @@
                     <div style="overflow: hidden" 
                         @click="pausePlayer(participant)"
                         v-bind:index="index"
-                        class="list-item list-item-players" v-if="participant.participating && !participant.oncourt" v-bind:key="participant.speelNummer" 
+                        class="list-item list-item-players" v-if="participant.participating && !participant.oncourt" 
+                        v-bind:key="participant.speelNummer" 
+                        :class="{'male': participant.gender == 'm', 'female': participant.gender == 'v'}"
                         v-for="(participant, index) in this.participants">
-
+                        
                         {{participant.name}}  
                         
-                        <div style="float: right">
+                        <!-- <div style="float: right">
                             <font-awesome-icon v-if="participant.gender == 'v'" :icon="['fas', 'venus']" />
                             <font-awesome-icon v-if="participant.gender == 'm'" :icon="['fas', 'mars']" />
                             <font-awesome-icon v-if="participant.gender == 'genderneutraal'" :icon="['fas', 'transgender']" />
-                        </div>
+                        </div> -->
 
                     </div>
                 </draggable> 
@@ -35,16 +37,17 @@
                 <div style="overflow: hidden" 
                     @click="resumePlayer(participant)"
                     v-bind:index="index"
-                    class="list-item list-item-players" v-if="participant.participating && !participant.oncourt" v-bind:key="participant.speelNummer" 
+                    class="list-item list-item-players" v-if="participant.participating && !participant.oncourt" v-bind:key="participant.speelNummer"
+                    :class="{'male': participant.gender == 'm', 'female': participant.gender == 'v'}"
                     v-for="(participant, index ) in this.pausedPlayers">
 
                     {{participant.name}} 
-                    
+<!--                     
                     <div style="float: right">
                         <font-awesome-icon v-if="participant.gender == 'v'" :icon="['fas', 'venus']" />
                         <font-awesome-icon v-if="participant.gender == 'm'" :icon="['fas', 'mars']" />
                         <font-awesome-icon v-if="participant.gender == 'genderneutraal'" :icon="['fas', 'transgender']" />
-                    </div>
+                    </div> -->
                 </div>
                 </draggable>
             </div> 
@@ -66,13 +69,24 @@
                     </div>
                     <img :class="{inactive: court.paused}" @click="checkout(court)" src="~@/assets/court.png" alt="">
                     <div class="list" style="min-height: 210px">
-                        <draggable style="min-height: 210px" v-if="!court.paused" v-model="court.players" group="players">
-                            <a @click="checkoutPlayer(player, court)" v-bind:court="court.baan" v-bind:speelNummer="player.speelNummer" class="list-item" style="font-size: 1.3em; font-weight: bold" v-bind:key="player.speelNummer" v-for="(player, index) in court.players">{{player.name}}
-                                <div style="float: right">
+                        <draggable 
+                        style="min-height: 210px" 
+                        v-if="!court.paused" 
+                        v-model="court.players" 
+                        group="players">
+                            <a @click="checkoutPlayer(player, court)" 
+                                v-bind:court="court.baan" 
+                                v-bind:speelNummer="player.speelNummer" 
+                                class="list-item" 
+                                style="font-size: 1.3em; font-weight: bold" 
+                                v-bind:key="player.speelNummer" 
+                                :class="{'male': player.gender == 'm', 'female': player.gender == 'v'}"
+                                v-for="(player, index) in court.players">{{player.name}}
+                                <!-- <div style="float: right">
                                     <font-awesome-icon v-if="player.gender == 'vrouw'" :icon="['fas', 'venus']" />
                                     <font-awesome-icon v-if="player.gender == 'man'" :icon="['fas', 'mars']" />
                                     <font-awesome-icon v-if="player.gender == 'genderneutraal'" :icon="['fas', 'transgender']" />
-                                </div>
+                                </div> -->
                             </a>
                         </draggable>
                         <div class="list-item training" v-else>TRAININGSBAAN </div>
@@ -102,9 +116,9 @@
                                 <div class="select">
                                     <select v-model="newPlayer.gender">
                                         <option value="" disabled>maak een keuze</option>
-                                        <option value="vrouw">vrouw</option>
-                                        <option value="man">man</option>
-                                        <option value="genderneutraal">genderneutraal</option>
+                                        <option value="v">vrouw</option>
+                                        <option value="m">man</option>
+                                        <option value="g">genderneutraal</option>
                                     </select>
                                 </div>
                             </div>
@@ -243,8 +257,6 @@
             // whether to show the modals
             showAddParticipant: false,
             showParticipantList: false,
-            
-
             newPlayer: {
                 name: "",
                 participating: true,
@@ -527,9 +539,18 @@ background: linear-gradient(to top, #FFFFFF, #ECE9E6); /* W3C, IE 10+/ Edge, Fir
         background: #209cee;
     }
 
+    .male {
+        background: #80cee1 !important;
+    }
+
+    .female {
+        background: #fbccd1 !important;
+    }
+
+    
+
     .number {
-     
-        
+    
         color: black;
         font-weight: bold;
         font-size: 1.5em;
@@ -565,7 +586,9 @@ background: linear-gradient(to top, #FFFFFF, #ECE9E6); /* W3C, IE 10+/ Edge, Fir
         padding-bottom: 10px;
     }
 
-    
+    .court .list-item {
+        color: black;
+    }
 
     .participants {
         border-top: 1px solid black;
