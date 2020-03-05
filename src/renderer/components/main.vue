@@ -362,13 +362,24 @@
 
             // sets back the players if < 4 on court
             this.courts.forEach((court) => {
-                if (court.players.length < 4) {
-                    court.players.forEach( (player) => {
-                        player.oncourt = false;
-                        let behindQueue = this.participants.splice( this.participants.findIndex(par => par.speelNummer === player.speelNummer), 1);                 
-                        this.participants.push(behindQueue[0]);
-                    });
-                    court.players = [];
+                if (court.isDouble) {
+                    if (court.players.length < 4) {
+                        court.players.forEach( (player) => {
+                            player.oncourt = false;
+                            let behindQueue = this.participants.splice( this.participants.findIndex(par => par.speelNummer === player.speelNummer), 1);                 
+                            this.participants.push(behindQueue[0]);
+                        });
+                        court.players = [];
+                    } 
+                } else {
+                     if (court.players.length < 2) {
+                        court.players.forEach( (player) => {
+                            player.oncourt = false;
+                            let behindQueue = this.participants.splice( this.participants.findIndex(par => par.speelNummer === player.speelNummer), 1);                 
+                            this.participants.push(behindQueue[0]);
+                        });
+                        court.players = [];
+                    } 
                 }
             });
         },
