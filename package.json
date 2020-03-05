@@ -59,6 +59,7 @@
     "dialogs": "^2.0.1",
     "electron-db": "^0.15.2",
     "file-dialog": "^0.0.8",
+    "nfc-pcsc": "^0.8.0",
     "sqlite3": "^4.1.0",
     "vue": "^2.5.16",
     "vue-electron": "^1.0.6",
