@@ -183,10 +183,13 @@ import { NFC } from 'nfc-pcsc';
     const fileDialog = require('file-dialog');
 
     const nfc = new NFC();
-    
-    // for usage of 
+
+    // for usage of dialog boxes
+
     const Dialog = require('dialogs');
     const dialog = Dialog();
+    
+    // for usage of filesystem. (for exporting)
     const fs = require('fs');
 
     export default {
@@ -199,8 +202,9 @@ import { NFC } from 'nfc-pcsc';
 
     // when application starts
     mounted() {
+       console.log('test');
         // localStorage.setItem('participants', "[]");
-
+    
         // gets the participant from storage || sets a new storage item
         if (!localStorage.getItem('participants')) {
             localStorage.setItem('participants', "[]");
@@ -239,9 +243,11 @@ import { NFC } from 'nfc-pcsc';
                 this.assignParticipants();
             }
         }, 2500 )
+        
 
+        // where all the nfc magic should happen...
         nfc.on('reader', reader => {
-
+            console.log(`${reader.reader}`)
             console.log(`${reader.reader.name}  device attached`);
 
             // enable when you want to auto-process ISO 14443-4 tags (standard=TAG_ISO_14443_4)
@@ -268,7 +274,15 @@ import { NFC } from 'nfc-pcsc';
                 // [only TAG_ISO_14443_3] String uid: tag uid
                 // [only TAG_ISO_14443_4] Buffer data: raw data from select APDU response
 
+                // this should show the nfc uid... card would be the client data
                 console.log(`${reader.reader.name}  card detected`, card);
+
+                // if so, we could make use of the existing 'barcode'system by doing:
+                
+                //this.barcode = card.uid  I guess?
+                //newParticipant()   // this triggers the participant checkin
+                
+                
 
             });
 
