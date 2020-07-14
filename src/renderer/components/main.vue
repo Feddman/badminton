@@ -42,12 +42,7 @@
                     v-for="(participant, index ) in this.pausedPlayers">
 
                     {{participant.name}} 
-<!--                     
-                    <div style="float: right">
-                        <font-awesome-icon v-if="participant.gender == 'v'" :icon="['fas', 'venus']" />
-                        <font-awesome-icon v-if="participant.gender == 'm'" :icon="['fas', 'mars']" />
-                        <font-awesome-icon v-if="participant.gender == 'genderneutraal'" :icon="['fas', 'transgender']" />
-                    </div> -->
+
                 </div>
                 </draggable>
             </div> 
@@ -178,6 +173,8 @@
   import draggable from 'vuedraggable'
     // initialises menu object
   import {Menu} from 'vue-electron'
+
+    import xlsxParser from 'xlsx-parse-json';
     
     // for usage of selecting something from the file system.
     const fileDialog = require('file-dialog');
@@ -197,6 +194,8 @@
 
     // when application starts
     mounted() {
+        // localStorage.setItem('participants', "[]");
+
         // gets the participant from storage || sets a new storage item
         if (!localStorage.getItem('participants')) {
             localStorage.setItem('participants', "[]");
@@ -317,12 +316,17 @@
         importPlayers() {
             fileDialog()
                 .then(files => {
-                   fs.readFile(files[0].path, "utf8",(err, data) => {
-                        if (err) throw err;
-                        this.participantsBacklog = JSON.parse(data);
+                    xlsxParser
+                    .onFileSelection(files[0])
+                    .then(data => {
+                        this.participantsBacklog = Object.values(data)[0];
                         this.participants = this.participantsBacklog;
-                        localStorage.setItem('participants', data);
+                        // console.log(this.participants[0][0].name);
+                        // data = Object.values(data)[0];
+
+                        localStorage.setItem('participants', JSON.stringify(this.participants[0]));
                     });
+      
                 });
                 
         },
@@ -431,6 +435,10 @@
                 return participant.speelNummer === par.speelNummer;
             })
             this.participants[index].participating =! this.participants[index].participating;
+
+            let behindQueue = this.participants.splice(index, 1);
+            this.participants.push(behindQueue[0]); 
+        
             this.barcode = null;
         },
 
