@@ -54,8 +54,9 @@
         <div class="courts-section">
             <div class="buttons" style="display: flex; justify-content: space-between">
                 <button class="button is-primary" @click="paused =! paused" v-html="paused ? 'Start rotatie': 'Pauzeer'"></button>
-                <!-- <button class="button is-info" @click="addCourt">Baan toevoegen</button> -->
-                <!-- <button class="button is-danger" @click="clearCourt">Baan Leegmaken</button> -->
+                <button class="button is-info" @click="addCourt">Baan toevoegen</button>
+                <button class="button is-danger" @click="clearCourts">Banen weghalen</button>
+                <button class="button is-danger" @click="emptyCourts">Banen leeghalen</button>
             </div>
 
             <div class="courts">
@@ -128,7 +129,7 @@
                 </section>
                 <footer class="modal-card-foot">
                     <button @click="addParticipant" class="button is-success">Speler toevoegen</button>
-                    <button @click="showAddParticipant = false" class="button">Cancel</button>""
+                    <button @click="showAddParticipant = false" class="button">Cancel</button>
                 </footer>
             </div>
             <button @click="showAddParticipant = false" class="modal-close is-large" aria-label="close"></button>
@@ -185,130 +186,7 @@ import { NFC } from 'nfc-pcsc';
         draggable,
     },
 
-    // when application starts
-    mounted() {
-        // gets the participant from storage || sets a new storage item
-        if (!localStorage.getItem('participants')) {
-            localStorage.setItem('participants', "[]");
-        } 
-        this.participants = JSON.parse(localStorage.getItem('participants'));
-        this.participantsBacklog = this.participants;
-
-        // bind scope 
-        let that = this;
-        // activate menu bar
-        var menu = this.$electron.remote.Menu.buildFromTemplate([
-            {
-                label: 'Menu',
-                submenu: [
-                    {
-                        label:'Spelersbeheer',
-                        click() {
-                            that.showParticipantList = true;
-                        }
-                    },
-                ]
-            }
-        ])
-        this.$electron.remote.Menu.setApplicationMenu(menu); 
-
-        // keep focus on the barcode input
-        setInterval(() => {
-            if (!this.showAddParticipant && !this.showParticipantList) {
-                document.getElementById('barcode').focus()
-            }
-        }, 2000);
-
-        // sets the rotation
-        setInterval( () => {
-            if(!this.paused) {
-                this.assignParticipants();
-            }
-        }, 2500 )
-
-        nfc.on('reader', reader => {
-
-            console.log(`${reader.reader.name}  device attached`);
-
-            // enable when you want to auto-process ISO 14443-4 tags (standard=TAG_ISO_14443_4)
-            // when an ISO 14443-4 is detected, SELECT FILE command with the AID is issued
-            // the response is available as card.data in the card event
-            // you can set reader.aid to:
-            // 1. a HEX string (which will be parsed automatically to Buffer)
-            reader.aid = 'F222222222';
-            // 2. an instance of Buffer containing the AID bytes
-            // reader.aid = Buffer.from('F222222222', 'hex');
-            // 3. a function which must return an instance of a Buffer when invoked with card object (containing standard and atr)
-            //    the function may generate AIDs dynamically based on the detected card
-            // reader.aid = ({ standard, atr }) => {
-            //
-            // 	return Buffer.from('F222222222', 'hex');
-            //
-            // };
-
-            reader.on('card', card => {
-
-                // card is object containing following data
-                // [always] String type: TAG_ISO_14443_3 (standard nfc tags like MIFARE) or TAG_ISO_14443_4 (Android HCE and others)
-                // [always] String standard: same as type
-                // [only TAG_ISO_14443_3] String uid: tag uid
-                // [only TAG_ISO_14443_4] Buffer data: raw data from select APDU response
-
-                console.log(`${reader.reader.name}  card detected`, card);
-
-            });
-
-            reader.on('card.off', card => {
-                console.log(`${reader.reader.name}  card removed`, card);
-            });
-
-            reader.on('error', err => {
-                console.log(`${reader.reader.name}  an error occurred`, err);
-            });
-
-            reader.on('end', () => {
-                console.log(`${reader.reader.name}  device removed`);
-            });
-
-        });
-
-
-        for (let i = 0; i < this.amountOfCourts; i++) {
-            this.addCourt();
-        }  
-    },
-
-    data() {
-        // the used 'ingredients' for the application
-        return {
-            title: 'badminton princenhage',
-            password: 'password',
-            amountOfCourts: 8,
-            paused: false,
-            participants: [],
-            participantsBacklog: [],
-            pausedPlayers: [],
-            courts: [],
-            barcode: null,
-
-            // whether to show the modals
-            showAddParticipant: false,
-            showParticipantList: false,
-            
-
-            newPlayer: {
-                name: "",
-                participating: true,
-                speelNummer: this.barcode,
-                paused: false,
-                gender: "",
-                ranking: ""
-            }
-        }
-
-    },
-
-    // all the applications' functions.
+        // all the applications' functions.
     methods: {
 
         addCourt() {
@@ -321,11 +199,22 @@ import { NFC } from 'nfc-pcsc';
             this.courts.push(court);     
         },
 
-        // clears all courts, unused atm
-        clearCourt() {
+        // clears all courts
+        clearCourts() {
             this.courts = [];
             this.participants.forEach((participant) => {
                 participant.oncourt = false;
+            });
+        },
+
+        // clears all courts
+        emptyCourts() {
+            this.participants.forEach((participant) => {
+                participant.oncourt = false;
+                participant.participating = false;
+            });
+            this.courts.forEach((court) => {
+                court.players = [];
             });
         },
 
@@ -444,12 +333,20 @@ import { NFC } from 'nfc-pcsc';
         newParticipant() {
             if (this.barcode !== null) {
                 let participant = this.participants.find(this.participantExists);
-                if (!participant) {
+                let pausedparticipant = this.pausedPlayers.find(this.participantExists);
+
+                if (!participant && !pausedparticipant) {
                     this.showAddParticipant = true;
                 }
-                else {
+                else if (pausedparticipant)
+                {
+                    this.resumePlayer(participant);
+                }
+                else                
+                {                               
                     this.changeParticipantStatus(participant);
                 }
+                
             }       
         },
 
@@ -470,7 +367,13 @@ import { NFC } from 'nfc-pcsc';
             let index = this.participants.findIndex( (par) => {
                 return participant.speelNummer === par.speelNummer;
             })
+            //toggle status
             this.participants[index].participating =! this.participants[index].participating;
+            //if you enter the queue, add at the back
+            if (this.participants[index].participating)
+            {
+                this.appendPlayer(participant, index);
+            }
             this.barcode = null;
         },
 
@@ -482,6 +385,17 @@ import { NFC } from 'nfc-pcsc';
             let participants = this.participants;
             participants = participants.filter( el => el.speelNummer !== participant.speelNummer );
             this.pausedPlayers.push(participant);
+            this.participants = participants;
+        },
+
+        appendPlayer(participant, index)
+        {
+            let participants = this.participants;
+            //remove from current position in the array
+            participants.splice(index,1);
+            participant.oncourt = false;
+            //add at the back
+            participants.push(participant);
             this.participants = participants;
         },
 
@@ -533,6 +447,137 @@ import { NFC } from 'nfc-pcsc';
                 ranking: ""
             };
         },
+    },
+
+    // when application starts
+    mounted() {
+        // gets the participant from storage || sets a new storage item
+        if (!localStorage.getItem('participants')) {
+            localStorage.setItem('participants', "[]");
+        } 
+        this.participants = JSON.parse(localStorage.getItem('participants'));
+        this.participantsBacklog = this.participants;
+
+        // bind scope 
+        let that = this;
+        // activate menu bar
+        var menu = this.$electron.remote.Menu.buildFromTemplate([
+            {
+                label: 'Menu',
+                submenu: [
+                    {
+                        label:'Spelersbeheer',
+                        click() {
+                            that.showParticipantList = true;
+                        }
+                    },
+                ]
+            }
+        ])
+        this.$electron.remote.Menu.setApplicationMenu(menu); 
+
+        // keep focus on the barcode input
+        setInterval(() => {
+            if (!this.showAddParticipant && !this.showParticipantList) {
+                document.getElementById('barcode').focus()
+            }
+        }, 2000);
+
+        // sets the rotation
+        setInterval( () => {
+            if(!this.paused) {
+                this.assignParticipants();
+            }
+        }, 2500 )
+
+        nfc.on('reader', reader => {
+
+            console.log(`${reader.reader.name}  device attached`);
+
+            // enable when you want to auto-process ISO 14443-4 tags (standard=TAG_ISO_14443_4)
+            // when an ISO 14443-4 is detected, SELECT FILE command with the AID is issued
+            // the response is available as card.data in the card event
+            // you can set reader.aid to:
+            // 1. a HEX string (which will be parsed automatically to Buffer)
+            reader.aid = 'F222222222';
+            // 2. an instance of Buffer containing the AID bytes
+            // reader.aid = Buffer.from('F222222222', 'hex');
+            // 3. a function which must return an instance of a Buffer when invoked with card object (containing standard and atr)
+            //    the function may generate AIDs dynamically based on the detected card
+            // reader.aid = ({ standard, atr }) => {
+            //
+            // 	return Buffer.from('F222222222', 'hex');
+            //
+            // };
+
+            reader.on('card', card => {
+
+                // card is object containing following data
+                // [always] String type: TAG_ISO_14443_3 (standard nfc tags like MIFARE) or TAG_ISO_14443_4 (Android HCE and others)
+                // [always] String standard: same as type
+                // [only TAG_ISO_14443_3] String uid: tag uid
+                // [only TAG_ISO_14443_4] Buffer data: raw data from select APDU response
+
+                console.log(`${reader.reader.name}  card detected`, card);
+                this.barcode = card.uid; //add this line
+
+                this.newParticipant();  
+            });
+
+            reader.on('card.off', card => {
+                console.log(`${reader.reader.name}  card removed`, card);
+            });
+
+            reader.on('error', err => {
+                console.log(`${reader.reader.name}  an error occurred`, err);
+            });
+
+            reader.on('end', () => {
+                console.log(`${reader.reader.name}  device removed`);
+            });
+
+        });
+
+
+        for (let i = 0; i < this.amountOfCourts; i++) {
+            this.addCourt();
+        }
+
+        //Start with empty courts
+        this.emptyCourts();
+
+        //Start with rotation off
+        this.paused = true;
+    },
+
+    data() {
+        // the used 'ingredients' for the application
+        return {
+            title: 'badminton princenhage',
+            password: 'password',
+            amountOfCourts: 8,
+            paused: false,
+            participants: [],
+            participantsBacklog: [],
+            pausedPlayers: [],
+            courts: [],
+            barcode: null,
+
+            // whether to show the modals
+            showAddParticipant: false,
+            showParticipantList: false,
+            
+
+            newPlayer: {
+                name: "",
+                participating: true,
+                speelNummer: this.barcode,
+                paused: false,
+                gender: "",
+                ranking: ""
+            }
+        }
+
     }
 }
 </script>
